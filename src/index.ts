@@ -1,8 +1,6 @@
 // src/index.ts
 import express, { Request, Response } from 'express';
 import { pipeline } from '@xenova/transformers';
-import dotenv from 'dotenv';
-dotenv.config();
 
 const PORT = 8080;
 const app = express();
