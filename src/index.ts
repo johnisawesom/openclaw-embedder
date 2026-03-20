@@ -7,6 +7,7 @@ const app = express();
 app.use(express.json());
 
 let embeddingPipeline: any = null;
+let modelReady = false;
 
 async function getPipeline() {
   if (!embeddingPipeline) {
@@ -34,10 +35,20 @@ async function getEmbedding(text: string): Promise<number[]> {
 }
 
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', bot: 'openclaw-embedder', version: '1.0.0' });
+  res.json({
+    status: 'ok',
+    bot: 'openclaw-embedder',
+    version: '1.0.0',
+    modelReady,
+  });
 });
 
 app.post('/embed', async (req: Request, res: Response) => {
+  if (!modelReady) {
+    res.status(503).json({ error: 'Model still loading — retry in a moment' });
+    return;
+  }
+
   const { text } = req.body as { text?: unknown };
 
   if (typeof text !== 'string' || text.trim().length === 0) {
@@ -58,6 +69,12 @@ app.post('/embed', async (req: Request, res: Response) => {
 async function main(): Promise<void> {
   console.log('[Embedder] Boot confirmed — openclaw-embedder v1.0.0');
 
+  // Start server immediately so health checks pass
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Embedder] Health server on port ${PORT}`);
+  });
+
+  // Load model after server is up
   try {
     console.log('[Embedder] Pre-warming embedding model...');
     await getPipeline();
@@ -66,16 +83,13 @@ async function main(): Promise<void> {
     if (smokeVector.length !== 384) {
       throw new Error('Smoke test failed — wrong vector dimension');
     }
-    console.log('[Embedder] Model ready');
+    modelReady = true;
+    console.log('[Embedder] Model ready — accepting /embed requests');
   } catch (e: unknown) {
     const err = e instanceof Error ? e : new Error(String(e));
-    console.error('[Embedder] Boot smoke test failed:', err.message);
+    console.error('[Embedder] Model load failed:', err.message);
     process.exit(1);
   }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Embedder] Health server on port ${PORT}`);
-  });
 }
 
 main().catch(console.error);
