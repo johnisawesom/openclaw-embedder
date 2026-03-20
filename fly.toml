@@ -5,7 +5,7 @@ primary_region = "syd"
   dockerfile = "Dockerfile"
 
 [deploy]
-  wait_timeout = "120s"
+  wait_timeout = "180s"
 
 [http_service]
   internal_port = 8080
@@ -15,7 +15,7 @@ primary_region = "syd"
   min_machines_running = 1
 
   [[http_service.checks]]
-    grace_period = "30s"
+    grace_period = "120s"
     interval = "30s"
     method = "GET"
     timeout = "5s"
